@@ -1,0 +1,12 @@
+{
+  "name": "statistik-service",
+  "version": "1.0.0",
+  "description": "Statistik-Komponente der Lagerverwaltung (Modul 321 - Verteilte Systeme)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
