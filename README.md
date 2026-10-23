@@ -1,2 +1,0 @@
-# Lagerverwaltung-App
-Lagerverwaltung App
