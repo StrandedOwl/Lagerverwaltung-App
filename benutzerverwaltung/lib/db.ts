@@ -7,7 +7,6 @@ import mysql from "mysql2/promise"
  * Reload) nicht bei jeder Codeänderung ein neuer Pool aufgebaut wird.
  */
 declare global {
-  // eslint-disable-next-line no-var
   var __benutzerverwaltungPool: mysql.Pool | undefined
 }
 

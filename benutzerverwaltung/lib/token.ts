@@ -1,36 +1,86 @@
+import { jwtVerify, SignJWT } from "jose"
+
 /**
- * Hilfsfunktionen rund um das (aktuell nur Platzhalter-)Token-Format
- * "<benutzerId>:<gueltigBisIso>", Base64url-kodiert.
+ * Login-Token als signiertes JWT (HS256).
  *
- * Wird sowohl von /api/auth/verify als auch von proxy.ts (für den
- * optimistischen Login-Check auf den Seiten) verwendet.
+ * Inhalt: sub = Benutzer-ID, iat = ausgestellt, exp = gültig bis.
+ * Die Rolle steht bewusst NICHT im Token: sie wird bei jeder Prüfung
+ * frisch aus der Datenbank gelesen. So wirkt eine Rollenänderung oder
+ * das Löschen eines Benutzers sofort und nicht erst nach Ablauf des Tokens.
+ *
+ * Verwendet von: /api/auth/login, POST /api/benutzer (Registrierung),
+ * /api/auth/verify, lib/auth.ts und proxy.ts.
  */
 
-export interface DecodedToken {
+const ALGORITHMUS = "HS256"
+const AUSSTELLER = "benutzerverwaltung"
+
+/** Wie lange ein Login gültig ist. */
+export const TOKEN_GUELTIGKEIT_SEKUNDEN = 60 * 60 // 1 Stunde
+
+export interface TokenInhalt {
   benutzerId: string
-  gueltigBis: string
+  gueltigBis: string // ISO-Datum
 }
 
-export function decodeToken(token: string): DecodedToken | null {
+function getSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      "JWT_SECRET fehlt oder ist kürzer als 32 Zeichen. " +
+        "Bitte in .env setzen (siehe .env.example)."
+    )
+  }
+  return new TextEncoder().encode(secret)
+}
+
+export async function erzeugeToken(
+  benutzerId: string
+): Promise<{ token: string; gueltigBis: string }> {
+  const jetztSekunden = Math.floor(Date.now() / 1000)
+  const exp = jetztSekunden + TOKEN_GUELTIGKEIT_SEKUNDEN
+
+  const token = await new SignJWT({})
+    .setProtectedHeader({ alg: ALGORITHMUS })
+    .setSubject(benutzerId)
+    .setIssuer(AUSSTELLER)
+    .setIssuedAt(jetztSekunden)
+    .setExpirationTime(exp)
+    .sign(getSecret())
+
+  return { token, gueltigBis: new Date(exp * 1000).toISOString() }
+}
+
+/**
+ * Prüft Signatur, Aussteller und Ablaufzeit.
+ * Gibt null zurück, wenn das Token in irgendeiner Form ungültig ist -
+ * der Grund spielt für die Aufrufer keine Rolle (immer 401).
+ */
+export async function pruefeToken(
+  token: string | null | undefined
+): Promise<TokenInhalt | null> {
+  if (!token) return null
+  // Ausserhalb von try: ein fehlendes Secret ist ein Konfigurationsfehler
+  // und soll laut auffallen, nicht wie ein ungültiges Token aussehen.
+  const secret = getSecret()
   try {
-    const decoded = Buffer.from(token, "base64url").toString("utf-8")
-
-    // NICHT decoded.split(":") verwenden: ein ISO-Datum enthält selbst
-    // Doppelpunkte (z. B. "10:50:27"), das würde es kaputt abschneiden.
-    // Nur am ERSTEN Doppelpunkt trennen (UUIDs enthalten keine).
-    const trennstelle = decoded.indexOf(":")
-    if (trennstelle === -1) return null
-
-    const benutzerId = decoded.slice(0, trennstelle)
-    const gueltigBis = decoded.slice(trennstelle + 1)
-    if (!benutzerId || !gueltigBis) return null
-
-    return { benutzerId, gueltigBis }
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: [ALGORITHMUS],
+      issuer: AUSSTELLER,
+    })
+    if (!payload.sub || !payload.exp) return null
+    return {
+      benutzerId: payload.sub,
+      gueltigBis: new Date(payload.exp * 1000).toISOString(),
+    }
   } catch {
     return null
   }
 }
 
-export function istTokenGueltig(decoded: DecodedToken): boolean {
-  return new Date(decoded.gueltigBis) > new Date()
+/** Liest "Authorization: Bearer <token>" aus. */
+export function tokenAusAuthHeader(header: string | null): string | null {
+  if (!header) return null
+  const treffer = header.match(/^Bearer\s+(\S+)$/i)
+  return treffer ? treffer[1] : null
 }

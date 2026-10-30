@@ -23,7 +23,7 @@ export default function RootLayout({
 
   return (
     <html
-      lang="en"
+      lang="de"
       suppressHydrationWarning
       className={cn(
         "font-sans antialiased",

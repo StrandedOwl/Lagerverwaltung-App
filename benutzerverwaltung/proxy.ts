@@ -1,31 +1,37 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-import { decodeToken, istTokenGueltig } from "@/lib/token"
-
-const TOKEN_COOKIE = "token"
+import { corsHeaderFuer } from "@/lib/cors"
+import { TOKEN_COOKIE } from "@/lib/session"
+import { pruefeToken } from "@/lib/token"
 
 /**
- * Optimistischer Login-Check für die Seiten dieser Komponente (nicht für
- * /api/*, das bleibt für die anderen Systemkomponenten offen und läuft
- * über den Authorization-Header, siehe /api/auth/verify).
+ * Proxy (früher "Middleware") - läuft vor jedem Request.
  *
- * "Optimistisch", weil hier nur Format/Ablauf des Tokens geprüft werden,
- * ohne die Datenbank zu fragen - reicht für einen schnellen Redirect,
- * ersetzt aber nicht die richtige Prüfung in den API-Routen selbst.
+ * 1. /api/*: CORS-Header für die anderen Systemkomponenten setzen und
+ *    Preflight-Requests (OPTIONS) direkt beantworten. Die eigentliche
+ *    Berechtigungsprüfung passiert in den Route-Handlern.
+ *
+ * 2. Seiten: Wer nicht eingeloggt ist, wird auf /login umgeleitet.
+ *    Hier wird nur die Signatur/Ablaufzeit des Tokens geprüft, ohne
+ *    Datenbank - das reicht für den Redirect. Die Seiten lesen den
+ *    Benutzer danach selbst aus der DB (lib/aktueller-benutzer.ts).
  */
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const tokenCookie = request.cookies.get(TOKEN_COOKIE)?.value
-  const decoded = tokenCookie ? decodeToken(tokenCookie) : null
-  const eingeloggt = decoded !== null && istTokenGueltig(decoded)
+
+  if (pathname.startsWith("/api/")) {
+    return behandleApi(request)
+  }
+
+  const token = request.cookies.get(TOKEN_COOKIE)?.value
+  const eingeloggt = (await pruefeToken(token)) !== null
 
   if (pathname === "/login") {
-    // Schon eingeloggt und trotzdem auf /login? Direkt zurück zur Startseite.
-    if (eingeloggt) {
-      return NextResponse.redirect(new URL("/", request.url))
-    }
-    return NextResponse.next()
+    // Schon eingeloggt und trotzdem auf /login? Direkt zur Startseite.
+    return eingeloggt
+      ? NextResponse.redirect(new URL("/", request.url))
+      : NextResponse.next()
   }
 
   if (!eingeloggt) {
@@ -35,6 +41,20 @@ export function proxy(request: NextRequest) {
   return NextResponse.next()
 }
 
+function behandleApi(request: NextRequest) {
+  const cors = corsHeaderFuer(request.headers.get("origin"))
+
+  if (request.method === "OPTIONS") {
+    return new NextResponse(null, { status: 204, headers: cors })
+  }
+
+  const response = NextResponse.next()
+  for (const [name, wert] of Object.entries(cors)) {
+    response.headers.set(name, wert)
+  }
+  return response
+}
+
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 }

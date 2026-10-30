@@ -24,7 +24,9 @@ export function BenutzerProvider({
 export function useBenutzer(): Benutzer | null {
   const benutzerPromise = use(BenutzerContext)
   if (!benutzerPromise) {
-    throw new Error("useBenutzer muss innerhalb von <BenutzerProvider> verwendet werden.")
+    throw new Error(
+      "useBenutzer muss innerhalb von <BenutzerProvider> verwendet werden."
+    )
   }
   return use(benutzerPromise)
 }

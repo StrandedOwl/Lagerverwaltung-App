@@ -1,83 +1,117 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import {
+  emailBereitsVergeben,
+  leseJson,
+  mitFehlerbehandlung,
+  nichtAngemeldet,
+  nichtGefunden,
+  ungueltigeEingabe,
+  verweigert,
+} from "@/lib/api"
+import { ermittleBenutzer } from "@/lib/auth"
+import {
   deleteBenutzer,
+  emailVergeben,
   getBenutzerById,
   toPublicBenutzer,
   updateBenutzer,
+  zaehleAdmins,
 } from "@/lib/benutzer-repository"
-import { ApiError, Benutzer } from "@/lib/types"
+import {
+  darfBenutzerBearbeiten,
+  darfBenutzerLoeschen,
+} from "@/lib/berechtigungen"
+import { hashePasswort } from "@/lib/passwort"
+import { validiereBenutzerUpdate } from "@/lib/validierung"
+
+interface Kontext {
+  params: Promise<{ id: string }>
+}
 
 /**
  * GET /api/benutzer/:id
- * Details zu einem einzelnen Benutzer.
+ * Details zu einem einzelnen Benutzer (gemäss Absprache ohne Login abrufbar).
  */
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
-  const benutzer = await getBenutzerById(id)
+export const GET = mitFehlerbehandlung(
+  async (_request: NextRequest, { params }: Kontext) => {
+    const { id } = await params
+    const benutzer = await getBenutzerById(id)
+    if (!benutzer) return nichtGefunden(id)
 
-  if (!benutzer) {
-    const error: ApiError = {
-      error: "benutzer_not_found",
-      message: `Kein Benutzer mit id "${id}" gefunden.`,
-    }
-    return NextResponse.json(error, { status: 404 })
+    return NextResponse.json(toPublicBenutzer(benutzer), { status: 200 })
   }
-
-  return NextResponse.json(toPublicBenutzer(benutzer), { status: 200 })
-}
+)
 
 /**
  * PUT /api/benutzer/:id
- * Aktualisiert einen bestehenden Benutzer (name, email, rolle).
+ * Aktualisiert name, email, rolle und/oder passwort (Teil-Update).
+ * Login nötig: Admins dürfen alle bearbeiten, Mitarbeiter nur sich selbst
+ * (ohne Rolle). Der letzte Admin kann nicht herabgestuft werden.
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
-  const bestehender = await getBenutzerById(id)
+export const PUT = mitFehlerbehandlung(
+  async (request: NextRequest, { params }: Kontext) => {
+    const { id } = await params
 
-  if (!bestehender) {
-    const error: ApiError = {
-      error: "benutzer_not_found",
-      message: `Kein Benutzer mit id "${id}" gefunden.`,
+    // Login zuerst prüfen: Unangemeldete erhalten immer 401 und
+    // erfahren so nicht, welche IDs existieren.
+    const akteur = await ermittleBenutzer(request)
+    if (!akteur) return nichtAngemeldet()
+
+    const bestehender = await getBenutzerById(id)
+    if (!bestehender) return nichtGefunden(id)
+
+    const pruefung = validiereBenutzerUpdate(await leseJson(request))
+    if (!pruefung.ok) return ungueltigeEingabe(pruefung.fehler)
+    const daten = pruefung.daten
+
+    const entscheid = darfBenutzerBearbeiten(
+      akteur,
+      toPublicBenutzer(bestehender),
+      daten,
+      await zaehleAdmins()
+    )
+    if (!entscheid.erlaubt) return verweigert(entscheid)
+
+    if (daten.email && (await emailVergeben(daten.email, id))) {
+      return emailBereitsVergeben()
     }
-    return NextResponse.json(error, { status: 404 })
+
+    const aktualisiert = await updateBenutzer(id, {
+      name: daten.name,
+      email: daten.email,
+      rolle: daten.rolle,
+      passwortHash: daten.passwort
+        ? await hashePasswort(daten.passwort)
+        : undefined,
+    })
+    if (!aktualisiert) return nichtGefunden(id)
+
+    return NextResponse.json(toPublicBenutzer(aktualisiert), { status: 200 })
   }
-
-  const body = (await request.json()) as Partial<Benutzer>
-
-  const aktualisiert = await updateBenutzer(id, {
-    name: body.name,
-    email: body.email,
-    rolle: body.rolle,
-  })
-
-  return NextResponse.json(toPublicBenutzer(aktualisiert!), { status: 200 })
-}
+)
 
 /**
  * DELETE /api/benutzer/:id
- * Löscht einen Benutzer.
+ * Löscht einen Benutzer. Nur Admins, und nicht das eigene Konto.
+ * Antwortet mit dem gelöschten Benutzer.
  */
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
-  const geloescht = await deleteBenutzer(id)
+export const DELETE = mitFehlerbehandlung(
+  async (request: NextRequest, { params }: Kontext) => {
+    const { id } = await params
 
-  if (!geloescht) {
-    const error: ApiError = {
-      error: "benutzer_not_found",
-      message: `Kein Benutzer mit id "${id}" gefunden.`,
-    }
-    return NextResponse.json(error, { status: 404 })
+    const akteur = await ermittleBenutzer(request)
+    if (!akteur) return nichtAngemeldet()
+
+    const ziel = await getBenutzerById(id)
+    if (!ziel) return nichtGefunden(id)
+
+    const entscheid = darfBenutzerLoeschen(akteur, toPublicBenutzer(ziel))
+    if (!entscheid.erlaubt) return verweigert(entscheid)
+
+    const geloescht = await deleteBenutzer(id)
+    if (!geloescht) return nichtGefunden(id)
+
+    return NextResponse.json(toPublicBenutzer(geloescht), { status: 200 })
   }
-
-  return NextResponse.json(toPublicBenutzer(geloescht), { status: 200 })
-}
+)

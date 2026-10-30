@@ -1,68 +1,72 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import {
+  emailBereitsVergeben,
+  leseJson,
+  mitFehlerbehandlung,
+  ungueltigeEingabe,
+  verweigert,
+} from "@/lib/api"
+import { ermittleBenutzer } from "@/lib/auth"
+import {
   createBenutzer,
-  emailExistiert,
+  emailVergeben,
   listBenutzer,
   toPublicBenutzer,
 } from "@/lib/benutzer-repository"
-import { erzeugeToken, setzeLoginCookie } from "@/lib/session"
-import { ApiError, Benutzer } from "@/lib/types"
+import { darfBenutzerAnlegen } from "@/lib/berechtigungen"
+import { hashePasswort } from "@/lib/passwort"
+import { setzeLoginCookie } from "@/lib/session"
+import { erzeugeToken } from "@/lib/token"
+import { validiereNeuenBenutzer } from "@/lib/validierung"
 
 /**
  * GET /api/benutzer
- * Liste aller Benutzer. Wird z. B. von der Statistik-Komponente
- * verwendet, um Namen zu Benutzer-IDs aufzulösen.
+ * Liste aller Benutzer (ohne Passwort-Hash). Wird z. B. von der
+ * Statistik-Komponente verwendet, um Namen zu Benutzer-IDs aufzulösen.
+ * Gemäss Gruppen-Absprache ohne Login abrufbar.
  */
-export async function GET() {
+export const GET = mitFehlerbehandlung(async () => {
   const benutzer = await listBenutzer()
   return NextResponse.json(benutzer.map(toPublicBenutzer), { status: 200 })
-}
+})
 
 /**
  * POST /api/benutzer
- * Legt einen neuen Benutzer an (nur Rolle "admin" dürfte das später).
+ * Legt einen neuen Benutzer an. Zwei Fälle:
  *
- * Verdoppelt aktuell auch als Registrierungs-Endpunkt fürs eigene
- * Frontend (kein Auth-Schutz nötig zum Anlegen). Damit man nach dem
- * Registrieren direkt eingeloggt ist, wird - genau wie bei
- * /api/auth/login - das Session-Cookie gesetzt. Der Response-Body
- * bleibt unverändert (nur der öffentliche Benutzer, kein Token) -
- * das entspricht weiterhin der vereinbarten Schnittstelle für die
- * anderen Komponenten, das Cookie ist nur ein Zusatz on top.
+ *  - Nicht eingeloggt = Registrierung: nur Rolle "mitarbeiter" erlaubt.
+ *    Danach ist man direkt eingeloggt (Login-Cookie wird gesetzt).
+ *  - Als Admin eingeloggt: beliebige Rolle; der Admin bleibt eingeloggt
+ *    (kein neues Cookie, sonst wäre er plötzlich der neue Benutzer).
+ *
+ * Der Response-Body ist in beiden Fällen der öffentliche Benutzer (201).
  */
-export async function POST(request: NextRequest) {
-  const body = (await request.json()) as Partial<Benutzer> & {
-    passwort?: string
-  }
+export const POST = mitFehlerbehandlung(async (request: NextRequest) => {
+  const pruefung = validiereNeuenBenutzer(await leseJson(request))
+  if (!pruefung.ok) return ungueltigeEingabe(pruefung.fehler)
+  const daten = pruefung.daten
 
-  if (!body.email || !body.name || !body.rolle || !body.passwort) {
-    const error: ApiError = {
-      error: "invalid_request",
-      message: "name, email, rolle und passwort sind erforderlich.",
-    }
-    return NextResponse.json(error, { status: 400 })
-  }
+  const akteur = await ermittleBenutzer(request)
+  const entscheid = darfBenutzerAnlegen(akteur, daten.rolle)
+  if (!entscheid.erlaubt) return verweigert(entscheid)
 
-  if (await emailExistiert(body.email)) {
-    const error: ApiError = {
-      error: "email_vergeben",
-      message: "Zu dieser Email existiert bereits ein Benutzer.",
-    }
-    return NextResponse.json(error, { status: 409 })
-  }
+  if (await emailVergeben(daten.email)) return emailBereitsVergeben()
 
   const neuerBenutzer = await createBenutzer({
-    name: body.name,
-    email: body.email,
-    rolle: body.rolle,
-    passwortHash: body.passwort, // Platzhalter: in echt hashen!
+    name: daten.name,
+    email: daten.email,
+    rolle: daten.rolle,
+    passwortHash: await hashePasswort(daten.passwort),
   })
 
   const response = NextResponse.json(toPublicBenutzer(neuerBenutzer), {
     status: 201,
   })
-  const { token, gueltigBis } = erzeugeToken(neuerBenutzer.id)
-  setzeLoginCookie(response, token, gueltigBis)
+
+  if (!akteur) {
+    const { token, gueltigBis } = await erzeugeToken(neuerBenutzer.id)
+    setzeLoginCookie(request, response, token, gueltigBis)
+  }
   return response
-}
+})

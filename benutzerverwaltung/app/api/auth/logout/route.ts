@@ -1,21 +1,16 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
-const TOKEN_COOKIE = "token"
+import { loescheLoginCookie } from "@/lib/session"
 
 /**
  * POST /api/auth/logout
- * Löscht das Login-Cookie dieser Komponente. Nur für die eigene
- * Oberfläche relevant, keine Auswirkung auf Tokens, die andere
- * Komponenten via Authorization-Header verwenden (die laufen einfach
- * bis gueltigBis weiter).
+ * Löscht das Login-Cookie dieser Komponente.
+ *
+ * Hinweis: JWTs sind zustandslos. Ein Token, das eine andere Komponente
+ * bereits erhalten hat, bleibt bis "gueltigBis" (max. 1 Stunde) gültig.
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   const response = NextResponse.json({ success: true }, { status: 200 })
-  response.cookies.set({
-    name: TOKEN_COOKIE,
-    value: "",
-    path: "/",
-    maxAge: 0,
-  })
+  loescheLoginCookie(request, response)
   return response
 }

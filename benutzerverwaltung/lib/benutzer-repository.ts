@@ -4,6 +4,14 @@ import { RowDataPacket } from "mysql2"
 import { pool } from "./db"
 import { Benutzer, BenutzerRecord, Rolle } from "./types"
 
+/**
+ * Datenzugriff auf die Tabelle "benutzer".
+ *
+ * Alle SQL-Statements dieser Komponente stehen hier an einem Ort und
+ * verwenden Platzhalter (?), damit keine SQL-Injection möglich ist.
+ * Die Route-Handler kennen kein SQL, nur diese Funktionen.
+ */
+
 interface BenutzerRow extends RowDataPacket {
   id: string
   name: string
@@ -12,6 +20,8 @@ interface BenutzerRow extends RowDataPacket {
   passwort_hash: string
   erstellt_am: Date
 }
+
+const SPALTEN = "id, name, email, rolle, passwort_hash, erstellt_am"
 
 function rowToRecord(row: BenutzerRow): BenutzerRecord {
   return {
@@ -24,6 +34,7 @@ function rowToRecord(row: BenutzerRow): BenutzerRecord {
   }
 }
 
+/** Entfernt den Passwort-Hash - nur dieses Objekt darf die API verlassen. */
 export function toPublicBenutzer(record: BenutzerRecord): Benutzer {
   const { id, name, email, rolle, erstelltAm } = record
   return { id, name, email, rolle, erstelltAm }
@@ -31,7 +42,7 @@ export function toPublicBenutzer(record: BenutzerRecord): Benutzer {
 
 export async function listBenutzer(): Promise<BenutzerRecord[]> {
   const [rows] = await pool.query<BenutzerRow[]>(
-    "SELECT id, name, email, rolle, passwort_hash, erstellt_am FROM benutzer ORDER BY erstellt_am ASC"
+    `SELECT ${SPALTEN} FROM benutzer ORDER BY erstellt_am ASC`
   )
   return rows.map(rowToRecord)
 }
@@ -40,7 +51,7 @@ export async function getBenutzerById(
   id: string
 ): Promise<BenutzerRecord | null> {
   const [rows] = await pool.query<BenutzerRow[]>(
-    "SELECT id, name, email, rolle, passwort_hash, erstellt_am FROM benutzer WHERE id = ?",
+    `SELECT ${SPALTEN} FROM benutzer WHERE id = ?`,
     [id]
   )
   return rows[0] ? rowToRecord(rows[0]) : null
@@ -50,10 +61,29 @@ export async function getBenutzerByEmail(
   email: string
 ): Promise<BenutzerRecord | null> {
   const [rows] = await pool.query<BenutzerRow[]>(
-    "SELECT id, name, email, rolle, passwort_hash, erstellt_am FROM benutzer WHERE email = ?",
+    `SELECT ${SPALTEN} FROM benutzer WHERE email = ?`,
     [email]
   )
   return rows[0] ? rowToRecord(rows[0]) : null
+}
+
+/**
+ * Ist die Email schon vergeben? Mit ausserId kann ein Benutzer
+ * ausgenommen werden (beim Bearbeiten darf man seine eigene Email behalten).
+ */
+export async function emailVergeben(
+  email: string,
+  ausserId?: string
+): Promise<boolean> {
+  const benutzer = await getBenutzerByEmail(email)
+  return benutzer !== null && benutzer.id !== ausserId
+}
+
+export async function zaehleAdmins(): Promise<number> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    "SELECT COUNT(*) AS anzahl FROM benutzer WHERE rolle = 'admin'"
+  )
+  return Number(rows[0].anzahl)
 }
 
 export interface CreateBenutzerInput {
@@ -84,37 +114,44 @@ export interface UpdateBenutzerInput {
   name?: string
   email?: string
   rolle?: Rolle
+  passwortHash?: string
 }
 
+/**
+ * Aktualisiert nur die Felder, die übergeben wurden (Teil-Update).
+ * Die Spaltennamen stammen aus einer festen Liste, nie aus dem Request.
+ */
 export async function updateBenutzer(
   id: string,
   input: UpdateBenutzerInput
 ): Promise<BenutzerRecord | null> {
+  const spalten: Record<keyof UpdateBenutzerInput, string> = {
+    name: "name",
+    email: "email",
+    rolle: "rolle",
+    passwortHash: "passwort_hash",
+  }
+
   const felder: string[] = []
   const werte: unknown[] = []
 
-  if (input.name !== undefined) {
-    felder.push("name = ?")
-    werte.push(input.name)
-  }
-  if (input.email !== undefined) {
-    felder.push("email = ?")
-    werte.push(input.email)
-  }
-  if (input.rolle !== undefined) {
-    felder.push("rolle = ?")
-    werte.push(input.rolle)
+  for (const schluessel of Object.keys(
+    spalten
+  ) as (keyof UpdateBenutzerInput)[]) {
+    const wert = input[schluessel]
+    if (wert !== undefined) {
+      felder.push(`${spalten[schluessel]} = ?`)
+      werte.push(wert)
+    }
   }
 
-  if (felder.length === 0) {
-    return getBenutzerById(id)
+  if (felder.length > 0) {
+    werte.push(id)
+    await pool.query(
+      `UPDATE benutzer SET ${felder.join(", ")} WHERE id = ?`,
+      werte
+    )
   }
-
-  werte.push(id)
-  await pool.query(
-    `UPDATE benutzer SET ${felder.join(", ")} WHERE id = ?`,
-    werte
-  )
 
   return getBenutzerById(id)
 }
@@ -127,10 +164,4 @@ export async function deleteBenutzer(
 
   await pool.query("DELETE FROM benutzer WHERE id = ?", [id])
   return benutzer
-}
-
-/** Ist die given email schon vergeben? (z. B. vor dem Anlegen prüfen) */
-export async function emailExistiert(email: string): Promise<boolean> {
-  const benutzer = await getBenutzerByEmail(email)
-  return benutzer !== null
 }

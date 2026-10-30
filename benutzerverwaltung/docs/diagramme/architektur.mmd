@@ -1,0 +1,18 @@
+flowchart TB
+    UI["<b>Eigene Oberfläche</b><br/>/login und /<br/><i>Login per Cookie</i>"]
+    AK["<b>Andere Komponenten</b><br/>Lagerverwaltung · Produktverwaltung · Statistik<br/><i>Authorization: Bearer &lt;token&gt;</i>"]
+
+    subgraph BV["Benutzerverwaltung · Next.js · http://localhost:3001"]
+        direction TB
+        PX["<b>proxy.ts</b><br/>Seiten: Umleitung auf /login ohne gültiges Token<br/>/api/*: CORS-Header und Preflight"]
+        RH["<b>Route-Handler</b> (app/api)<br/>/api/benutzer · /api/benutzer/:id<br/>/api/auth/login · verify · logout"]
+        LG["<b>Fachlogik</b> (lib)<br/>validierung.ts · berechtigungen.ts<br/>auth.ts · token.ts (JWT) · passwort.ts (bcrypt)"]
+        RP["<b>benutzer-repository.ts</b><br/>alle SQL-Statements, mit Platzhaltern"]
+        PX --> RH --> LG --> RP
+    end
+
+    DB[("<b>MariaDB 11</b><br/>Tabelle benutzer<br/>Docker-Container")]
+
+    UI --> PX
+    AK --> PX
+    RP --> DB

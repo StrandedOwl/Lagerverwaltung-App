@@ -1,27 +1,33 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 /**
- * Gemeinsame Token-/Cookie-Logik für alles, was einen Benutzer in dieser
- * Komponente "einloggt" - aktuell also /api/auth/login und (nach
- * erfolgreicher Registrierung) /api/benutzer (POST).
+ * Login-Cookie für die eigene Oberfläche dieser Komponente.
  *
- * So bleibt das Token-Format an genau einer Stelle definiert, statt es
- * in jeder Route neu zusammenzubauen (siehe die Lehre aus dem Bug in
- * lib/token.ts: doppelte Logik an mehreren Stellen ist fehleranfällig).
+ * Das Cookie enthält dasselbe JWT wie der Response-Body von
+ * /api/auth/login. Die eigenen Seiten lesen es serverseitig (httpOnly,
+ * also nicht per JavaScript auslesbar). Andere Komponenten verwenden
+ * stattdessen den Authorization-Header (siehe SCHNITTSTELLE.md).
+ *
+ * Name und Optionen sind nur hier definiert, damit sie nicht in
+ * mehreren Dateien auseinanderlaufen.
  */
 
-const TOKEN_COOKIE = "token"
-const GUELTIGKEITSDAUER_MS = 1000 * 60 * 60 // 1 Stunde
+export const TOKEN_COOKIE = "token"
 
-export function erzeugeToken(benutzerId: string) {
-  const gueltigBis = new Date(Date.now() + GUELTIGKEITSDAUER_MS).toISOString()
-  const token = Buffer.from(`${benutzerId}:${gueltigBis}`).toString(
-    "base64url"
+/**
+ * "Secure" nur, wenn die Seite wirklich über HTTPS aufgerufen wird.
+ * Sonst würde der Browser das Cookie z. B. bei der Demo über
+ * http://<IP>:3001 verwerfen und man käme nie über das Login hinaus.
+ */
+function istHttps(request: NextRequest): boolean {
+  return (
+    request.nextUrl.protocol === "https:" ||
+    request.headers.get("x-forwarded-proto") === "https"
   )
-  return { token, gueltigBis }
 }
 
 export function setzeLoginCookie(
+  request: NextRequest,
   response: NextResponse,
   token: string,
   gueltigBis: string
@@ -31,8 +37,23 @@ export function setzeLoginCookie(
     value: token,
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: istHttps(request),
     path: "/",
     expires: new Date(gueltigBis),
+  })
+}
+
+export function loescheLoginCookie(
+  request: NextRequest,
+  response: NextResponse
+) {
+  response.cookies.set({
+    name: TOKEN_COOKIE,
+    value: "",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: istHttps(request),
+    path: "/",
+    maxAge: 0,
   })
 }

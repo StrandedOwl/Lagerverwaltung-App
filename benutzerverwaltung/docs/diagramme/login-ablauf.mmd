@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    actor U as Benutzer
+    participant F as Frontend<br/>(z. B. Lagerverwaltung)
+    participant BV as Benutzerverwaltung<br/>:3001
+    participant DB as MariaDB
+    participant LV as Backend einer<br/>anderen Komponente
+
+    U->>F: Email + Passwort eingeben
+    F->>BV: POST /api/auth/login
+    BV->>DB: SELECT benutzer WHERE email = ?
+    DB-->>BV: Datensatz inkl. passwort_hash
+    BV->>BV: bcrypt.compare(passwort, hash)
+    BV-->>F: 200 { token (JWT), gueltigBis, benutzer }
+    Note over F: Token merken (1 Stunde gültig)
+
+    F->>LV: z. B. POST /api/lager<br/>Authorization: Bearer <token>
+    LV->>BV: GET /api/auth/verify<br/>Authorization: Bearer <token>
+    BV->>BV: Signatur + Ablauf prüfen
+    BV->>DB: Benutzer noch vorhanden? Aktuelle Rolle?
+    BV-->>LV: 200 { valid: true, benutzer: { id, rolle, … } }
+    LV->>LV: eigene Berechtigung anhand rolle
+    LV-->>F: Antwort der Komponente

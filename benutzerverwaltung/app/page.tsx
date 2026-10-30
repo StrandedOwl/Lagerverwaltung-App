@@ -1,35 +1,44 @@
-import { Badge } from "@/components/ui/badge"
+import { redirect } from "next/navigation"
+import { UserPlus } from "lucide-react"
+
+import { BenutzerFormularDialog } from "@/components/benutzer-formular-dialog"
+import { BenutzerTabelle } from "@/components/benutzer-tabelle"
+import { Profile } from "@/components/profile"
+import { Button } from "@/components/ui/button"
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { LogoutButton } from "@/components/logout-button"
+import { getAktuellerBenutzer } from "@/lib/aktueller-benutzer"
 import { listBenutzer, toPublicBenutzer } from "@/lib/benutzer-repository"
-import { Profile } from "@/components/profile"
 
 export const dynamic = "force-dynamic"
 
+/**
+ * Startseite der Benutzerverwaltung: Liste aller Benutzer.
+ * Admins können hier Benutzer anlegen, bearbeiten und löschen,
+ * Mitarbeiter ihr eigenes Profil bearbeiten.
+ */
 export default async function Home() {
+  const aktueller = await getAktuellerBenutzer()
+  // Der Proxy leitet zwar schon um, aber das Token kann zu einem
+  // inzwischen gelöschten Benutzer gehören.
+  if (!aktueller) redirect("/login")
+
   const benutzer = (await listBenutzer()).map(toPublicBenutzer)
+  const istAdmin = aktueller.rolle === "admin"
 
   return (
     <>
-      <header className="flex h-fit w-full p-2">
+      <header className="flex w-full items-center justify-start p-2">
         <Profile />
       </header>
-      <main className="mx-auto flex min-h-svh w-full max-w-2xl flex-col justify-center gap-6 p-6">
-        <div className="flex items-center justify-between">
+      <main className="mx-auto flex w-full flex-1 flex-col items-center justify-start gap-6 p-6 pt-20">
+        <div className="flex size-full h-fit max-w-4xl flex-col gap-4">
           <div>
             <h1 className="font-heading text-2xl font-medium tracking-tight">
               Benutzerverwaltung
@@ -38,48 +47,34 @@ export default async function Home() {
               Lagerverwaltung-App &middot; LB2 Modul 321
             </p>
           </div>
-        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Benutzer</CardTitle>
-            <CardDescription>
-              Aus MariaDB (siehe db/schema.sql). Wird konsumiert über GET
-              /api/benutzer.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Rolle</TableHead>
-                  <TableHead>Erstellt am</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {benutzer.map((b) => (
-                  <TableRow key={b.id}>
-                    <TableCell className="font-medium">{b.name}</TableCell>
-                    <TableCell>{b.email}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{b.rolle}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Intl.DateTimeFormat("de-CH", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      }).format(new Date(b.erstelltAm))}
-                      {/* {new Date(b.erstelltAm).toLocaleDateString("de-CH")} */}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Benutzer ({benutzer.length})</CardTitle>
+              <CardDescription>
+                {istAdmin
+                  ? "Als Admin kannst du Benutzer anlegen, bearbeiten und löschen."
+                  : "Du kannst dein eigenes Profil bearbeiten."}
+              </CardDescription>
+              {istAdmin && (
+                <CardAction>
+                  <BenutzerFormularDialog
+                    darfRolleWaehlen
+                    ausloeser={
+                      <Button size="sm" variant="default">
+                        <UserPlus data-icon="inline-start" />
+                        Benutzer anlegen
+                      </Button>
+                    }
+                  />
+                </CardAction>
+              )}
+            </CardHeader>
+            <CardContent>
+              <BenutzerTabelle benutzer={benutzer} aktueller={aktueller} />
+            </CardContent>
+          </Card>
+        </div>
       </main>
     </>
   )

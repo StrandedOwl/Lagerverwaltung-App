@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Von shadcn/ui generierter Code (nicht selbst geschrieben, wird per
+    // "npx shadcn add" aktualisiert) - nicht Teil der eigenen Code-Qualität.
+    "components/ui/**",
+    "hooks/use-mobile.ts",
+    "coverage/**",
   ]),
 ]);
 
