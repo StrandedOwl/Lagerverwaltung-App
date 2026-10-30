@@ -21,10 +21,23 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { apiAufruf } from "@/lib/api-client"
 import { Benutzer, Rolle } from "@/lib/types"
+
+const ROLLEN_AUSWAHL = [
+  { label: "Mitarbeiter", value: "mitarbeiter" },
+  { label: "Admin", value: "admin" },
+] satisfies { label: string; value: Rolle }[]
 
 interface Props {
   /** Ohne benutzer = neuen Benutzer anlegen, mit benutzer = bearbeiten. */
@@ -135,17 +148,26 @@ export function BenutzerFormularDialog({
             {darfRolleWaehlen && (
               <Field>
                 <FieldLabel htmlFor={`${idPrefix}-rolle`}>Rolle</FieldLabel>
-                <NativeSelect
-                  id={`${idPrefix}-rolle`}
-                  className="w-full"
+                <Select
+                  items={ROLLEN_AUSWAHL}
                   value={rolle}
-                  onChange={(e) => setRolle(e.target.value as Rolle)}
+                  onValueChange={(wert) => {
+                    if (wert) setRolle(wert as Rolle)
+                  }}
                 >
-                  <NativeSelectOption value="mitarbeiter">
-                    Mitarbeiter
-                  </NativeSelectOption>
-                  <NativeSelectOption value="admin">Admin</NativeSelectOption>
-                </NativeSelect>
+                  <SelectTrigger id={`${idPrefix}-rolle`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {ROLLEN_AUSWAHL.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </Field>
             )}
 
