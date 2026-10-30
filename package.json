@@ -1,0 +1,14 @@
+{
+  "name": "statistik-service",
+  "version": "1.0.0",
+  "description": "Statistik-Komponente der Lagerverwaltung (Modul 321 - Verteilte Systeme)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@supabase/server": "^1.7.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
