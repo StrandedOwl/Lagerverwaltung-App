@@ -1,0 +1,9 @@
+erDiagram
+    BENUTZER {
+        CHAR(36) id PK "UUID v4"
+        VARCHAR(255) name "max. 100 Zeichen (Validierung)"
+        VARCHAR(255) email UK "klein geschrieben, eindeutig"
+        ENUM rolle "admin | mitarbeiter"
+        VARCHAR(255) passwort_hash "bcrypt, nie über API"
+        DATETIME erstellt_am "DEFAULT CURRENT_TIMESTAMP"
+    }

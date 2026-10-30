@@ -1,0 +1,24 @@
+services:
+  db:
+    image: mariadb:11
+    container_name: benutzerverwaltung-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: root_pw
+      MARIADB_DATABASE: lagerverwaltung_benutzer
+      MARIADB_USER: lager
+      MARIADB_PASSWORD: lager_pw
+    ports:
+      # Host-Port aus .env (DB_PORT), damit er sich bei der Integration
+      # nicht mit der DB einer anderen Komponente in die Quere kommt.
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - benutzerverwaltung-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  benutzerverwaltung-db-data:
