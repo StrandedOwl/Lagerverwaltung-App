@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Produkt-/Lagerverwaltung</title>
+<style>
+  :root {
+    --bg: #eef1f4; --surface: #ffffff; --ink: #1d2733; --muted: #5d6b7a;
+    --line: #d3dae1; --accent: #0f5c6e; --accent-ink: #ffffff;
+    --warn: #b4540a; --danger: #a82a2a; --ok: #1f7a4d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151b22; --surface: #1d252e; --ink: #e6ebf0; --muted: #9aa8b6;
+      --line: #324050; --accent: #4fb3c8; --accent-ink: #0c1a20;
+      --warn: #e59a52; --danger: #ef7b7b; --ok: #5cc791;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  input, button, select { font: inherit; color: inherit; }
+  select, input { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px; }
+  select:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  button.danger { color: var(--danger); }
+  #search { flex: 1; min-width: 180px; }
+  .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-weight: 600; color: var(--muted); font-size: .85rem; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .desc { color: var(--muted); font-size: .85rem; }
+  .stock { display: inline-flex; align-items: center; gap: 6px; }
+  .stock button { padding: 1px 9px; }
+  .badge { font-size: .78rem; padding: 1px 8px; border-radius: 10px; border: 1px solid currentColor; }
+  .low { color: var(--warn); } .out { color: var(--danger); } .fine { color: var(--ok); }
+  .actions { white-space: nowrap; display: flex; gap: 6px; }
+  .empty { padding: 28px; text-align: center; color: var(--muted); }
+  dialog { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); padding: 20px; width: min(420px, 92vw); }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  label { display: block; font-size: .85rem; color: var(--muted); margin: 10px 0 3px; }
+  dialog input { width: 100%; }
+  .row { display: flex; gap: 10px; } .row > div { flex: 1; }
+  .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg);
+    padding: 8px 16px; border-radius: 4px; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  #toast.show { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Produkt-/Lagerverwaltung</h1>
+  <p class="sub" id="summary">Produkte anlegen und Lagerbestände verwalten.</p>
+
+  <div class="bar">
+    <input id="search" type="search" placeholder="Produkt suchen" aria-label="Produkt suchen">
+    <select id="kat" aria-label="Nach Kategorie filtern"><option value="">Alle Kategorien</option></select>
+    <select id="sort" aria-label="Sortierung">
+      <option value="name">Sortiert nach Name</option>
+      <option value="preis">Sortiert nach Preis</option>
+      <option value="bestand">Sortiert nach Bestand (niedrig zuerst)</option>
+    </select>
+    <button class="primary" id="new">Produkt anlegen</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Produkt</th><th>Kategorie</th><th class="num">Preis (CHF)</th><th>Lagerbestand</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="empty" class="empty" hidden>Noch keine Produkte. Lege das erste Produkt an.</div>
+  </div>
+</main>
+
+<dialog id="dlg">
+  <form id="form" method="dialog">
+    <h2 id="dlg-title" style="margin:0 0 4px;font-size:1.15rem"></h2>
+    <label for="f-name">Name</label>
+    <input id="f-name" required maxlength="100">
+    <label for="f-desc">Beschreibung</label>
+    <input id="f-desc">
+    <label for="f-kat">Kategorie</label>
+    <input id="f-kat" list="kat-list" maxlength="50"><datalist id="kat-list"></datalist>
+    <div class="row">
+      <div><label for="f-price">Preis (CHF)</label><input id="f-price" type="number" step="0.05" min="0" required></div>
+      <div><label for="f-stock">Lagerbestand</label><input id="f-stock" type="number" step="1" min="0" required></div>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" id="cancel">Abbrechen</button>
+      <button class="primary" type="submit">Speichern</button>
+    </div>
+  </form>
+</dialog>
+<div id="toast" role="status"></div>
+
+<script>
+  // Backend-Adresse. Wird die Seite vom Node-Server (Port 3002) ausgeliefert, reicht ein relativer Pfad.
+  // Wird sie z.B. über Live Server (Port 5500) geöffnet, geht der Aufruf direkt an den Node-Server.
+  const API = location.port === '3002' ? '' : 'http://localhost:3002';
+  const $ = (id) => document.getElementById(id);
+  let products = [];
+  let editingId = null;
+
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  async function api(path, options = {}) {
+    const res = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' }, ...options,
+    });
+    if (res.status === 204) return null;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || (data.errors || []).join(', ') || `Fehler ${res.status}`);
+    return data;
+  }
+
+  function status(p) {
+    if (p.lagerbestand === 0) return '<span class="badge out">Nicht verfügbar</span>';
+    if (p.lagerbestand <= 10) return '<span class="badge low">Wenig Bestand</span>';
+    return '<span class="badge fine">Verfügbar</span>';
+  }
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function render() {
+    const q = $('search').value.trim().toLowerCase();
+    const kategorien = [...new Set(products.map((p) => p.kategorie).filter(Boolean))].sort();
+    const gewaehlt = kategorien.includes($('kat').value) ? $('kat').value : '';
+    $('kat').innerHTML = '<option value="">Alle Kategorien</option>' +
+      kategorien.map((k) => `<option${k === gewaehlt ? ' selected' : ''}>${esc(k)}</option>`).join('');
+    $('kat-list').innerHTML = kategorien.map((k) => `<option value="${esc(k)}">`).join('');
+
+    const sorter = {
+      name: (a, b) => a.name.localeCompare(b.name, 'de'),
+      preis: (a, b) => a.preis - b.preis,
+      bestand: (a, b) => a.lagerbestand - b.lagerbestand,
+    }[$('sort').value];
+    const list = products
+      .filter((p) => p.name.toLowerCase().includes(q) && (!gewaehlt || p.kategorie === gewaehlt))
+      .sort(sorter);
+
+    const wenig = products.filter((p) => p.lagerbestand > 0 && p.lagerbestand <= 10).length;
+    const leer = products.filter((p) => p.lagerbestand === 0).length;
+    $('summary').textContent = products.length
+      ? `${products.length} Produkte · ${wenig} mit wenig Bestand · ${leer} nicht verfügbar`
+      : 'Produkte anlegen und Lagerbestände verwalten.';
+    $('empty').textContent = products.length ? 'Keine Treffer für diese Auswahl.' : 'Noch keine Produkte. Lege das erste Produkt an.';
+    $('empty').hidden = list.length > 0;
+    $('rows').innerHTML = list.map((p) => `
+      <tr>
+        <td>${esc(p.name)}<div class="desc">${esc(p.beschreibung || '')}</div></td>
+        <td>${esc(p.kategorie || '')}</td>
+        <td class="num">${p.preis.toFixed(2)}</td>
+        <td><span class="stock">
+          <button data-act="dec" data-id="${p.id}" aria-label="Bestand um 1 reduzieren">−</button>
+          <strong>${p.lagerbestand}</strong>
+          <button data-act="inc" data-id="${p.id}" aria-label="Bestand um 1 erhöhen">+</button>
+        </span></td>
+        <td>${status(p)}</td>
+        <td class="actions">
+          <button data-act="edit" data-id="${p.id}">Bearbeiten</button>
+          <button class="danger" data-act="del" data-id="${p.id}">Löschen</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  async function refresh() {
+    try { products = await api('/api/produkte'); render(); }
+    catch (e) {
+      products = []; render();
+      $('empty').textContent = `Backend nicht erreichbar (${API || location.origin}). Läuft "npm start"?`;
+      $('empty').hidden = false;
+    }
+  }
+
+  function openDialog(p) {
+    editingId = p ? p.id : null;
+    $('dlg-title').textContent = p ? 'Produkt bearbeiten' : 'Produkt anlegen';
+    $('f-name').value = p?.name ?? '';
+    $('f-desc').value = p?.beschreibung ?? '';
+    $('f-kat').value = p?.kategorie ?? '';
+    $('f-price').value = p?.preis ?? '';
+    $('f-stock').value = p?.lagerbestand ?? 0;
+    $('dlg').showModal();
+  }
+
+  $('new').onclick = () => openDialog(null);
+  $('cancel').onclick = () => $('dlg').close();
+  $('search').oninput = render;
+  $('kat').onchange = render;
+  $('sort').onchange = render;
+
+  $('form').onsubmit = async (e) => {
+    e.preventDefault();
+    const body = JSON.stringify({
+      name: $('f-name').value,
+      beschreibung: $('f-desc').value,
+      kategorie: $('f-kat').value,
+      preis: parseFloat($('f-price').value),
+      lagerbestand: parseInt($('f-stock').value, 10),
+    });
+    try {
+      if (editingId) await api(`/api/produkte/${editingId}`, { method: 'PUT', body });
+      else await api('/api/produkte', { method: 'POST', body });
+      $('dlg').close();
+      toast(editingId ? 'Produkt gespeichert' : 'Produkt angelegt');
+      refresh();
+    } catch (err) { toast(err.message); }
+  };
+
+  $('rows').onclick = async (e) => {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const p = products.find((x) => x.id === id);
+    try {
+      if (btn.dataset.act === 'edit') return openDialog(p);
+      if (btn.dataset.act === 'del') {
+        if (!confirm(`«${p.name}» löschen?`)) return;
+        await api(`/api/produkte/${id}`, { method: 'DELETE' });
+        toast('Produkt gelöscht');
+      } else {
+        const change = btn.dataset.act === 'inc' ? 1 : -1;
+        const lagerbestand = p.lagerbestand + change;
+        if (lagerbestand < 0) return toast('Lagerbestand darf nicht negativ werden');
+        await api(`/api/produkte/${id}`, { method: 'PUT', body: JSON.stringify({ lagerbestand }) });
+      }
+      refresh();
+    } catch (err) { toast(err.message); }
+  };
+
+  refresh();
+</script>
+</body>
+</html>
