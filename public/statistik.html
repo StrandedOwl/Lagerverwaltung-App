@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Statistik</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Statistik</h1>
+    <p>Verantwortlich: Andrin</p>
+  </header>
+
+  <div class="card">
+    <p>Hier entsteht die Statistik-Komponente.</p>
+    <p id="status">Server-Status wird geprüft...</p>
+  </div>
+
+  <nav>
+    <a href="/">← Zurück zur Übersicht</a>
+  </nav>
+
+  <script>
+    fetch("/api/health")
+      .then((res) => res.json())
+      .then((data) => {
+        document.getElementById("status").textContent =
+          "Server-Status: " + data.status;
+      })
+      .catch(() => {
+        document.getElementById("status").textContent =
+          "Server nicht erreichbar.";
+      });
+  </script>
+</body>
+</html>

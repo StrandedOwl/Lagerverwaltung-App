@@ -1,0 +1,4 @@
+[
+  { "id": "a1f3c2d0-0001-4a00-9000-000000000001", "name": "Schraube M6 (100 Stk.)", "beschreibung": "Edelstahl, Sechskant", "preis": 8.9, "lagerbestand": 120, "kategorie": "Befestigung" },
+  { "id": "a1f3c2d0-0002-4a00-9000-000000000002", "name": "Palette EUR 1200x800", "beschreibung": "Holz, gebraucht", "preis": 12.5, "lagerbestand": 35, "kategorie": "Verpackung" }
+]
