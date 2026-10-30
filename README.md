@@ -23,7 +23,32 @@ Das System bildet eine **Lagerverwaltung** ab und ist in mehrere unabhängige Sy
 
 Die einzelnen Systemkomponenten kommunizieren über definierte Schnittstellen miteinander (siehe [Schnittstellen.md](Schnittstellen.md) für Details zu Endpunkten, Datenformaten und Zusammenspiel der Komponenten).
 
-## Setup
+## Ganzes System starten
+
+| Komponente | Ordner | Adresse |
+|---|---|---|
+| Statistik + Übersicht | `server.js` | http://localhost:3000 |
+| Benutzerverwaltung | `benutzerverwaltung/` | http://localhost:3001 |
+| Produkt-/Lagerverwaltung | `public/server.js` | http://localhost:3002 |
+
+**Einmalig einrichten:**
+```
+npm install
+cd benutzerverwaltung
+npm install
+copy .env.example .env      (danach JWT_SECRET anpassen)
+npm run db:up
+npm run db:reset
+cd ..
+```
+
+**Starten** (Docker Desktop muss laufen):
+```
+npm run start:alle
+```
+Das startet alle drei Server und die Datenbank. Danach http://localhost:3000 öffnen. Mit **Ctrl + C** werden alle wieder beendet.
+
+## Setup (nur Statistik)
 
 1. Abhängigkeiten installieren:
    ```
@@ -40,4 +65,9 @@ Die einzelnen Systemkomponenten kommunizieren über definierte Schnittstellen mi
 3. Server starten:
    ```
    npm start
+   ```
+   Solange Benutzer- und Produktverwaltung noch nicht laufen, kann die Statistik mit `MOCK_DATEN=true` in der `.env` mit Testdaten betrieben werden.
+4. Unit-Tests ausführen:
+   ```
+   npm test
    ```

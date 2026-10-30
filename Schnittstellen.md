@@ -1,4 +1,5 @@
 ## Grundsätze
+- **Ports:** Statistik `3000`, Benutzerverwaltung `3001`, Produkt-/Lagerverwaltung `3002`
 - **Format:** JSON (`Content-Type: application/json`)
 - **Protokoll:** REST über HTTP
 - **Statuscodes:** 200 (OK), 201 (Created), 400 (Fehlerhafte Anfrage), 404 (Nicht gefunden), 500 (Serverfehler)
@@ -53,6 +54,44 @@ Diese Komponente hat i.d.R. keine eigenen Schreib-Endpunkte für die anderen –
 | Methode | Endpunkt | Beschreibung |
 |---|---|---|
 | GET | `/api/statistik/uebersicht` | Anzahl Benutzer, Anzahl Produkte, Gesamtwert Lager |
-| GET | `/api/statistik/lagerbestand` | Auswertung Lagerbestand (z.B. Produkte mit niedrigem Bestand) |
+| GET | `/api/statistik/lagerbestand?schwellenwert=10` | Auswertung Lagerbestand (z.B. Produkte mit niedrigem Bestand) |
 
 Ruft dafür intern auf: `GET /api/benutzer` und `GET /api/produkte`.
+Die Adressen dieser Komponenten werden über `BENUTZER_SERVICE_URL` und `PRODUKT_SERVICE_URL` in der `.env` konfiguriert (leer = gleicher Server).
+
+**Antwort `GET /api/statistik/uebersicht`:**
+```json
+{
+  "anzahlBenutzer": 4,
+  "benutzerProRolle": { "admin": 2, "mitarbeiter": 2 },
+  "anzahlProdukte": 8,
+  "anzahlKategorien": 4,
+  "gesamtLagerbestand": 1335,
+  "gesamtwertLager": 3026.9
+}
+```
+
+**Antwort `GET /api/statistik/lagerbestand`:**
+
+Query-Parameter `schwellenwert` (optional, ganze Zahl >= 0, Standard `10`): Produkte mit `lagerbestand <= schwellenwert` gelten als niedrig. Ein ungültiger Wert ergibt Status 400.
+```json
+{
+  "schwellenwert": 10,
+  "anzahlAusverkauft": 1,
+  "anzahlNiedrigerBestand": 2,
+  "produkteNiedrigerBestand": [
+    { "id": "p4", "name": "Hammer", "kategorie": "Werkzeug", "lagerbestand": 0 },
+    { "id": "p7", "name": "Schutzbrille", "kategorie": "Schutzausrüstung", "lagerbestand": 3 }
+  ],
+  "proKategorie": [
+    { "kategorie": "Werkzeug", "anzahlProdukte": 3, "lagerbestand": 19, "lagerwert": 2013.6 }
+  ]
+}
+```
+
+Ist nur die Benutzerverwaltung nicht erreichbar, liefert `/uebersicht` trotzdem Status 200 mit den Produktzahlen. `anzahlBenutzer` und `benutzerProRolle` sind dann `null`, und der Grund steht in `"warnungen": ["..."]`.
+
+**Fehlerfall:** Ist die Produkt-/Lagerverwaltung nicht erreichbar, antwortet die Statistik mit Status 500:
+```json
+{ "fehler": "Produkt-/Lagerverwaltung nicht erreichbar oder fehlerhafte Antwort: fetch failed", "komponente": "Produkt-/Lagerverwaltung" }
+```

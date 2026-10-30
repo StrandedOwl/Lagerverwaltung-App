@@ -106,10 +106,9 @@
 <div id="toast" role="status"></div>
 
 <script>
-  // Backend-Adresse. Wird die Seite von einem Node-Server ausgeliefert, reicht ein relativer Pfad.
-  // Wird sie über Live Server (Port 5500) oder als Datei geöffnet, geht der Aufruf an den Node-Server auf 3002.
-  // Läuft dein Backend auf einem anderen Port, hier die URL eintragen, z.B. 'http://localhost:3000'.
-  const API = (location.protocol === 'file:' || location.port === '5500') ? 'http://localhost:3002' : '';
+  // Backend-Adresse. Wird die Seite vom eigenen Node-Server (Port 3002) ausgeliefert, reicht ein relativer Pfad.
+  // In allen anderen Fällen (Statistik-Server auf 3000, Live Server, Datei) geht der Aufruf an Port 3002.
+  const API = location.port === '3002' ? '' : 'http://localhost:3002';
   const $ = (id) => document.getElementById(id);
   let products = [];
   let editingId = null;
