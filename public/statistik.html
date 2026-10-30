@@ -12,26 +12,78 @@
     <p>Verantwortlich: Andrin</p>
   </header>
 
-  <div class="card">
-    <p>Hier entsteht die Statistik-Komponente.</p>
-    <p id="status">Server-Status wird geprüft...</p>
-  </div>
-
   <nav>
     <a href="/">← Zurück zur Übersicht</a>
   </nav>
 
-  <script>
-    fetch("/api/health")
-      .then((res) => res.json())
-      .then((data) => {
-        document.getElementById("status").textContent =
-          "Server-Status: " + data.status;
-      })
-      .catch(() => {
-        document.getElementById("status").textContent =
-          "Server nicht erreichbar.";
-      });
-  </script>
+  <main class="statistik">
+    <p id="meldung" class="meldung" role="status" hidden></p>
+
+    <!-- Kennzahlen aus GET /api/statistik/uebersicht -->
+    <section class="kennzahlen" aria-label="Kennzahlen">
+      <div class="kachel kachel-haupt">
+        <span class="kachel-titel">Gesamtwert Lager</span>
+        <span class="kachel-wert" id="gesamtwertLager">–</span>
+      </div>
+      <div class="kachel">
+        <span class="kachel-titel">Produkte</span>
+        <span class="kachel-wert" id="anzahlProdukte">–</span>
+        <span class="kachel-detail" id="anzahlKategorien"></span>
+      </div>
+      <div class="kachel">
+        <span class="kachel-titel">Artikel an Lager</span>
+        <span class="kachel-wert" id="gesamtLagerbestand">–</span>
+        <span class="kachel-detail">Stück total</span>
+      </div>
+      <div class="kachel">
+        <span class="kachel-titel">Benutzer</span>
+        <span class="kachel-wert" id="anzahlBenutzer">–</span>
+        <span class="kachel-detail" id="benutzerProRolle"></span>
+      </div>
+    </section>
+
+    <!-- Auswertung aus GET /api/statistik/lagerbestand -->
+    <section class="card card-breit">
+      <div class="card-kopf">
+        <h2>Produkte mit niedrigem Bestand</h2>
+        <form id="schwellenwertForm" class="schwellenwert">
+          <label for="schwellenwert">Schwellenwert (Stück)</label>
+          <input type="number" id="schwellenwert" min="0" step="1" value="10" required />
+          <button type="submit">Aktualisieren</button>
+        </form>
+      </div>
+      <p class="zusammenfassung" id="lagerZusammenfassung"></p>
+      <table class="tabelle">
+        <thead>
+          <tr>
+            <th>Produkt</th>
+            <th>Kategorie</th>
+            <th class="zahl">Bestand</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="niedrigerBestand"></tbody>
+      </table>
+    </section>
+
+    <section class="card card-breit">
+      <h2>Lagerwert pro Kategorie</h2>
+      <table class="tabelle">
+        <thead>
+          <tr>
+            <th>Kategorie</th>
+            <th class="zahl">Produkte</th>
+            <th class="zahl">Bestand</th>
+            <th class="balken-spalte">Lagerwert</th>
+          </tr>
+        </thead>
+        <tbody id="proKategorie"></tbody>
+      </table>
+    </section>
+
+    <p class="server-status" id="status">Server-Status wird geprüft...</p>
+  </main>
+
+  <script src="statistik.js"></script>
 </body>
 </html>

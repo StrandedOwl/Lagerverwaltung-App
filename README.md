@@ -41,3 +41,8 @@ Die einzelnen Systemkomponenten kommunizieren über definierte Schnittstellen mi
    ```
    npm start
    ```
+   Solange Benutzer- und Produktverwaltung noch nicht laufen, kann die Statistik mit `MOCK_DATEN=true` in der `.env` mit Testdaten betrieben werden.
+4. Unit-Tests ausführen:
+   ```
+   npm test
+   ```
