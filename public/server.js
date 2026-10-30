@@ -5,7 +5,10 @@ const { randomUUID } = require('crypto');
 
 // ---------- Konfiguration (per Umgebungsvariablen anpassbar) ----------
 const PORT = process.env.PORT || 3002;
-const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data', 'products.json');
+// Liegt server.js in public/, kommt die Datendatei nach <Projekt>/data/ (ausserhalb von public/),
+// damit sie nicht vom statischen Webserver ausgeliefert wird.
+const BASE = path.basename(__dirname) === 'public' ? path.join(__dirname, '..') : __dirname;
+const DATA_FILE = process.env.DATA_FILE || path.join(BASE, 'data', 'products.json');
 
 // ---------- Datenhaltung (JSON-Datei, atomar geschrieben) ----------
 function load() {
