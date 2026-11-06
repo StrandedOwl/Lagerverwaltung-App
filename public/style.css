@@ -60,3 +60,179 @@ nav a:hover {
   display: block;
   color: #666;
 }
+
+/* ---------- Statistik ---------- */
+
+.statistik {
+  max-width: 960px;
+}
+
+.card-breit {
+  max-width: none;
+}
+
+.card h2 {
+  font-size: 1.1rem;
+  margin: 0 0 1rem 0;
+}
+
+.card-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.meldung {
+  background: #fdecec;
+  border-left: 4px solid #c62828;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  color: #7f1d1d;
+}
+
+.kennzahlen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.kachel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.kachel-titel,
+.kachel-detail {
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.kachel-wert {
+  font-size: 1.75rem;
+  font-weight: bold;
+}
+
+.kachel-haupt {
+  border-top: 4px solid #2563eb;
+}
+
+.schwellenwert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.schwellenwert input {
+  width: 5rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.schwellenwert button {
+  padding: 0.4rem 0.9rem;
+  border: none;
+  border-radius: 4px;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+}
+
+.schwellenwert button:hover {
+  background: #1d4ed8;
+}
+
+.zusammenfassung {
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.tabelle th,
+.tabelle td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #eee;
+}
+
+.tabelle th {
+  color: #666;
+  font-weight: normal;
+  font-size: 0.85rem;
+}
+
+.tabelle .zahl {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabelle .leer {
+  color: #666;
+  text-align: center;
+}
+
+/* Status immer als Text-Label mit Farbpunkt, nie nur Farbe */
+.status::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+
+.status-warnung::before {
+  background: #e08a00;
+}
+
+.status-kritisch::before {
+  background: #c62828;
+}
+
+/* Balkendiagramm für den Lagerwert pro Kategorie */
+.balken-spalte {
+  width: 45%;
+}
+
+.balken-zeile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.balken {
+  height: 16px;
+  min-width: 2px;
+  background: #2a78d6;
+  border-radius: 0 4px 4px 0;
+}
+
+.balken:hover {
+  background: #1f62b3;
+}
+
+.balken-wert {
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.server-status {
+  color: #666;
+  font-size: 0.8rem;
+}

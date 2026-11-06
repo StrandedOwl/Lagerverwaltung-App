@@ -4,7 +4,9 @@
   "description": "Statistik-Komponente der Lagerverwaltung (Modul 321 - Verteilte Systeme)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:alle": "node start-alle.js",
+    "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
     "@supabase/server": "^1.7.0",
