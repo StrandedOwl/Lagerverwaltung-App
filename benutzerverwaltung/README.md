@@ -9,8 +9,8 @@ Komponenten (Lagerverwaltung, Produktverwaltung, Statistik) Login und
 Token-Prüfung über eine REST-API zur Verfügung.
 
 - **Schnittstelle:** [SCHNITTSTELLE.md](SCHNITTSTELLE.md)
-- **Komponentendokumentation:** [docs/DOKUMENTATION.md](docs/DOKUMENTATION.md)
-- **Tests und Testprotokoll:** [docs/TESTS.md](docs/TESTS.md)
+- **Komponentendokumentation:** [../Dokumentation/Lorenzo/DOKUMENTATION.md](../Dokumentation/Lorenzo/DOKUMENTATION.md)
+- **Tests und Testprotokoll:** [../Dokumentation/Lorenzo/TESTS.md](../Dokumentation/Lorenzo/TESTS.md)
 
 ## Voraussetzungen
 
@@ -40,27 +40,27 @@ npm run dev               # http://localhost:3001
 
 ## Scripts
 
-| Script                  | Zweck                                                   |
-| ----------------------- | ------------------------------------------------------- |
-| `npm run dev`           | Entwicklungsserver auf Port 3001                        |
-| `npm run build` / `start` | Produktions-Build bauen / starten (Port 3001)         |
-| `npm test`              | Unit-Tests (ohne Datenbank)                             |
-| `npm run test:coverage` | Unit-Tests mit Testabdeckung (Bericht in `coverage/`)   |
-| `npm run test:api`      | API-Tests gegen den laufenden Server (DB + `dev` nötig) |
-| `npm run lint`          | ESLint                                                  |
-| `npm run typecheck`     | TypeScript-Prüfung                                      |
-| `npm run db:up` / `db:down` | MariaDB-Container starten / stoppen                 |
-| `npm run db:migrate`    | Tabelle `benutzer` anlegen (falls nicht vorhanden)      |
-| `npm run db:seed`       | Testbenutzer einfügen bzw. zurücksetzen                 |
-| `npm run db:reset`      | Tabelle löschen, neu anlegen, Testbenutzer einfügen     |
+| Script                      | Zweck                                                   |
+| --------------------------- | ------------------------------------------------------- |
+| `npm run dev`               | Entwicklungsserver auf Port 3001                        |
+| `npm run build` / `start`   | Produktions-Build bauen / starten (Port 3001)           |
+| `npm test`                  | Unit-Tests (ohne Datenbank)                             |
+| `npm run test:coverage`     | Unit-Tests mit Testabdeckung (Bericht in `coverage/`)   |
+| `npm run test:api`          | API-Tests gegen den laufenden Server (DB + `dev` nötig) |
+| `npm run lint`              | ESLint                                                  |
+| `npm run typecheck`         | TypeScript-Prüfung                                      |
+| `npm run db:up` / `db:down` | MariaDB-Container starten / stoppen                     |
+| `npm run db:migrate`        | Tabelle `benutzer` anlegen (falls nicht vorhanden)      |
+| `npm run db:seed`           | Testbenutzer einfügen bzw. zurücksetzen                 |
+| `npm run db:reset`          | Tabelle löschen, neu anlegen, Testbenutzer einfügen     |
 
 ## Konfiguration (`.env`)
 
-| Variable       | Bedeutung                                              |
-| -------------- | ------------------------------------------------------ |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Datenbankverbindung (passt zu `docker-compose.yml`) |
-| `JWT_SECRET`   | Schlüssel zum Signieren der Login-Tokens, mind. 32 Zeichen |
-| `CORS_ORIGINS` | Frontends, die `/api/*` im Browser aufrufen dürfen     |
+| Variable                                                  | Bedeutung                                                  |
+| --------------------------------------------------------- | ---------------------------------------------------------- |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Datenbankverbindung (passt zu `docker-compose.yml`)        |
+| `JWT_SECRET`                                              | Schlüssel zum Signieren der Login-Tokens, mind. 32 Zeichen |
+| `CORS_ORIGINS`                                            | Frontends, die `/api/*` im Browser aufrufen dürfen         |
 
 ## Projektstruktur
 
@@ -76,5 +76,4 @@ db/                      SQL: Schema, Testdaten, Reset
 proxy.ts                 Login-Umleitung für Seiten, CORS für /api
 tests/unit/              Unit-Tests (Vitest)
 tests/api/               API-Tests gegen den laufenden Server
-docs/                    Dokumentation, Diagramme, Screenshots
 ```
