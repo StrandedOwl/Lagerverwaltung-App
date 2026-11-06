@@ -1,6 +1,32 @@
 ## Starten der Lagerverwaltung-App
 
-- **Statistik** (Port 3000): im Hauptordner `npm install` → `npm start`
-- **Benutzerverwaltung** (Port 3001): in `benutzerverwaltung/` → `npm install`, `.env` einrichten, `npm run db:up` (MariaDB via Docker), `npm run db:reset`, dann `npm run dev`
-- **Produkt-/Lagerverwaltung** (Port 3002): im Hauptordner `node public/server.js`
-- **Alle zusammen**: einmalig alle drei wie oben installieren/einrichten, danach im Hauptordner `npm run start:alle` (startet alle drei automatisch, Docker Desktop muss laufen)
+Drei unabhängige Services – einzeln oder alle zusammen startbar.
+
+| Komponente | Port | Startbefehl (im Hauptordner) |
+|---|---|---|
+| Statistik | 3000 | `npm run statistik` |
+| Benutzerverwaltung | 3001 | `npm run benutzer` |
+| Produkt-/Lagerverwaltung | 3002 | `npm run lager` |
+
+### Einmalig einrichten
+
+```bash
+npm install
+
+cd benutzerverwaltung
+npm install
+copy .env.example .env      # danach JWT_SECRET anpassen
+npm run db:up                # MariaDB-Container starten
+npm run db:reset              # Tabelle anlegen + Testbenutzer einfügen
+cd ..
+```
+
+### Alle drei zusammen starten
+
+```bash
+npm run start:alle
+```
+
+Startet Statistik, Benutzerverwaltung und Produkt-/Lagerverwaltung inkl. Datenbank automatisch (Docker Desktop muss laufen). Beenden mit `Ctrl + C`.
+
+Wird nur an einer Komponente gearbeitet, reicht der einzelne Befehl aus der Tabelle oben.
