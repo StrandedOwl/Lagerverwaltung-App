@@ -5,6 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "statistik": "node server.js",
+    "lager": "node public/server.js",
+    "benutzer": "npm run dev --prefix benutzerverwaltung",
     "start:alle": "node start-alle.js",
     "test": "node --test \"test/**/*.test.js\""
   },
